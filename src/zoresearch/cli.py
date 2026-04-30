@@ -151,12 +151,26 @@ def annotations(key: str):
 
 
 @app.command(name="import")
-def import_cmd(value: str = typer.Argument(..., help="DOI, arXiv id, or URL")):
-    """Add a paper to Zotero through the local connector API."""
+def import_cmd(
+    value: str = typer.Argument(..., help="DOI, arXiv id, or URL"),
+    collection: str = typer.Option(None, "--collection", "-c", help="Zotero collection name to file the item under"),
+):
+    """Fetch metadata + PDF and add to Zotero (optionally into a collection)."""
     console.print(lore.say("import_pending"))
-    res = import_.import_one(value)
-    console.print(lore.ok(lore.say("import_added")))
-    console.print(json.dumps(res, indent=2))
+    res = import_.import_one(value, collection=collection)
+    if res.error and not res.item_saved:
+        console.print(lore.err(res.error))
+        raise typer.Exit(1)
+    bits = []
+    if res.item_saved: bits.append("metadata ✓")
+    if res.pdf_attached: bits.append("PDF ✓")
+    elif res.target.kind == "arxiv": bits.append("PDF ✗")
+    else: bits.append("PDF (none — likely paywall)")
+    console.print(lore.ok(f"{lore.say('import_added')}  {res.target.url}  [{', '.join(bits)}]"))
+    if res.error and res.item_saved:
+        console.print(lore.warn(res.error))
+    if res.metadata.get("title"):
+        console.print(f"  [{lore.ANCIENT_DIM}]title:[/{lore.ANCIENT_DIM}] {res.metadata['title']}")
 
 
 @app.command()
