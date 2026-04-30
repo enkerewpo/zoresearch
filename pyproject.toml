@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zoresearch"
+version = "0.1.0"
+description = "A personal research copilot built on a local Zotero library."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "wheatfox" }]
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "httpx>=0.27",
+    "pymupdf>=1.24",
+    "pymupdf4llm>=0.0.17",
+    "platformdirs>=4.2",
+]
+
+[project.optional-dependencies]
+mineru = ["mineru-open-api>=0.1"]
+embed = ["sentence-transformers>=3.0", "numpy>=1.26"]
+
+[project.scripts]
+zr = "zoresearch.cli:app"
+zoresearch = "zoresearch.cli:app"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+zoresearch = ["py.typed"]

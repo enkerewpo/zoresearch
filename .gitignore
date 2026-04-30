@@ -1,0 +1,21 @@
+# local cache (rebuildable) — root-anchored so .claude/skills/workspace/ is unaffected
+/data/
+
+# research projects (personal)
+/workspace/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# OS
+.DS_Store
+
+# editor
+.vscode/
+.idea/
