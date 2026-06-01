@@ -142,6 +142,30 @@ def _resolve_collection_key(name: str | None) -> str | None:
     return None
 
 
+def _resolve_collection_id(name: str | None) -> int | None:
+    """Look up a collection's numeric collectionID by display name.
+
+    Zotero's connector /updateSession parses target as <type><id> where id is
+    an integer (e.g. ``C80``). The 8-char key (``B3HULW8N``) is not accepted —
+    we need the numeric collectionID from the local sqlite.
+    """
+    if not name:
+        return None
+    try:
+        import sqlite3
+        from .paths import ZOTERO_DB
+        conn = sqlite3.connect(f"file:{ZOTERO_DB}?mode=ro&immutable=1", uri=True)
+        row = conn.execute(
+            "SELECT collectionID FROM collections "
+            "WHERE LOWER(collectionName)=LOWER(?) "
+            "AND collectionID NOT IN (SELECT collectionID FROM deletedCollections)",
+            (name,),
+        ).fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
 def _download_arxiv_pdf(arxiv_id: str, dest: Path) -> Path:
     """Download the PDF straight from arXiv. Idempotent."""
     if dest.exists() and dest.stat().st_size > 50_000:
@@ -165,8 +189,8 @@ def import_one(value: str, *, collection: str | None = None,
             "Open Zotero and try again — the connector endpoint needs the app running."
         )
     target = resolve(value)
-    coll_key = _resolve_collection_key(collection) if collection else None
-    if collection and not coll_key:
+    coll_id = _resolve_collection_id(collection) if collection else None
+    if collection and coll_id is None:
         return ImportResult(target=target, error=f"collection {collection!r} not found in Zotero")
 
     # 1) metadata
@@ -189,9 +213,13 @@ def import_one(value: str, *, collection: str | None = None,
 
     # 3) push to Zotero — saveItems + saveAttachment in one connection, no sleep
     sess = f"zr-import-{int(time.time() * 1000)}"
+    # NOTE: Zotero's /connector/saveItems endpoint ignores any `collections`
+    # field in the payload — it always files to the active UI target. To file
+    # into a named collection we follow up with /connector/updateSession,
+    # which is the same endpoint the browser extension's "Save to" dropdown
+    # hits after the connector save completes. Target syntax: L<libraryID>/C<collKey>;
+    # for the personal library that's L1/C<key>.
     payload = {"sessionID": sess, "uri": target.url, "items": [item]}
-    if coll_key:
-        payload["collections"] = [coll_key]
     with httpx.Client(timeout=120) as c:
         r1 = c.post(f"{ZOTERO_API}/connector/saveItems", json=payload)
         if r1.status_code not in (200, 201):
@@ -213,6 +241,21 @@ def import_one(value: str, *, collection: str | None = None,
                 result.pdf_attached = True
             else:
                 result.error = f"saveAttachment {r2.status_code}: {r2.text[:120]}"
+        # 4) file into collection via updateSession (same connector session
+        # the browser extension uses for its "Save to" dropdown). The target
+        # parser at server_connector.js parses `<type><parseInt(rest)>`, so
+        # we must send a bare ``C<collectionID>`` (numeric), NOT the 8-char
+        # collectionKey nor an ``L<lib>/C<id>`` form (the slash gets eaten).
+        if coll_id is not None:
+            try:
+                r3 = c.post(
+                    f"{ZOTERO_API}/connector/updateSession",
+                    json={"sessionID": sess, "target": f"C{coll_id}"},
+                )
+                if r3.status_code not in (200, 201):
+                    result.error = (result.error or "") + f" updateSession {r3.status_code}: {r3.text[:80]}"
+            except httpx.HTTPError as e:
+                result.error = (result.error or "") + f" updateSession error: {e}"
         return result
 
 

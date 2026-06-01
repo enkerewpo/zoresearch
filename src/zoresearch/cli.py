@@ -451,5 +451,35 @@ def shrine(
     parse(key, engine=engine, force=force)
 
 
+@app.command()
+def web(
+    port: int = typer.Option(8765, "--port", "-p", help="port to bind"),
+    host: str = typer.Option("127.0.0.1", "--host", help="host to bind"),
+    no_open: bool = typer.Option(False, "--no-open", help="do not auto-open browser"),
+):
+    """Map mode — open workspaces in a browser with KaTeX + Zotero citation links."""
+    try:
+        from . import web as web_mod
+    except ImportError as e:
+        console.print(f"[red]web reader needs extra deps:[/red] {e}")
+        console.print("install with: [cyan]pip install starlette uvicorn markdown-it-py mdit-py-plugins[/cyan]")
+        raise typer.Exit(1)
+    if (b := lore.banner()):
+        console.print(f"[cyan]{b}[/cyan]")
+    console.print(f"[green]Sheikah Slate online[/green] → http://{host}:{port}/")
+    if not no_open:
+        console.print("opening browser…")
+    web_mod.serve(host=host, port=port, open_browser=not no_open)
+
+
+@app.command("map", help="(alias of web) Sheikah Slate map mode — workspace reader.")
+def map_cmd(
+    port: int = typer.Option(8765, "--port", "-p"),
+    host: str = typer.Option("127.0.0.1", "--host"),
+    no_open: bool = typer.Option(False, "--no-open"),
+):
+    web(port=port, host=host, no_open=no_open)
+
+
 if __name__ == "__main__":
     app()

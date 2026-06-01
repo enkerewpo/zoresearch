@@ -22,6 +22,12 @@ dependencies = [
 [project.optional-dependencies]
 mineru = ["mineru-open-api>=0.1"]
 embed = ["sentence-transformers>=3.0", "numpy>=1.26"]
+web = [
+    "starlette>=0.37",
+    "uvicorn>=0.30",
+    "markdown-it-py>=3.0",
+    "mdit-py-plugins>=0.4",
+]
 
 [project.scripts]
 zr = "zoresearch.cli:app"
