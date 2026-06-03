@@ -115,7 +115,50 @@ def _make_md():
         md.use(footnote_plugin)
     except ImportError:
         pass
+    try:
+        # Tokenize $...$ / $$...$$ as math BEFORE emphasis, so subscripts like
+        # a_{\text{pred}} aren't mangled into <em>. Re-wrap in \(..\) / \[..\]
+        # (delimiters KaTeX auto-render already scans for, see _KATEX_HEAD).
+        from mdit_py_plugins.dollarmath import dollarmath_plugin
+        md.use(
+            dollarmath_plugin,
+            # catch $$...$$ even mid-paragraph (authors often forget blank
+            # lines around display math), so the single-$ rule can't greedily
+            # mis-pair across newlines and swallow prose into a math span.
+            double_inline=True,
+            renderer=lambda content, opts: (
+                "\\[" + content + "\\]"
+                if opts.get("display_mode")
+                else "\\(" + content + "\\)"
+            ),
+        )
+    except ImportError:
+        pass
     return md
+
+
+def _normalize_math_delims(text: str) -> str:
+    r"""Convert \(...\) -> $...$ and \[...\] -> $$...$$ outside fenced code, so
+    dollarmath protects both LaTeX delimiter styles. KaTeX auto-render lists
+    both, but markdown-it would otherwise eat the backslashes and mangle _ / ^
+    inside \(...\) before KaTeX runs. Negative lookbehind avoids touching \\[
+    (LaTeX line-break spacing). Fenced code blocks are left untouched."""
+    import re
+    parts = re.split(r"(```.*?```|~~~.*?~~~)", text, flags=re.DOTALL)
+    for i in range(0, len(parts), 2):  # even indices = non-code segments
+        p = parts[i]
+        p = re.sub(r"(?<!\\)\\\[", "$$", p)
+        p = re.sub(r"(?<!\\)\\\]", "$$", p)
+        p = re.sub(r"(?<!\\)\\\(", "$", p)
+        p = re.sub(r"(?<!\\)\\\)", "$", p)
+        # Collapse newlines inside $$...$$ so multi-line display math (esp.
+        # inside list items, where authors don't put it on its own line)
+        # parses as one inline-double span instead of mis-pairing single $.
+        p = re.sub(r"\$\$(.+?)\$\$",
+                   lambda m: "$$" + m.group(1).replace("\n", " ") + "$$",
+                   p, flags=re.DOTALL)
+        parts[i] = p
+    return "".join(parts)
 
 
 _MD = None
@@ -123,6 +166,7 @@ def render_md(text: str) -> str:
     global _MD
     if _MD is None:
         _MD = _make_md()
+    text = _normalize_math_delims(text)
     html_body = _MD.render(text)
     # Link inline citations AFTER HTML render so we operate on tag-aware text.
     # Skip inside <code> / <pre> / <a> by splitting on those blocks.
@@ -939,7 +983,7 @@ def _route_cite(request):
 def build_app():
     from starlette.applications import Starlette
     from starlette.routing import Route
-    return Starlette(
+    app = Starlette(
         debug=False,
         routes=[
             Route("/", _route_index),
@@ -948,6 +992,25 @@ def build_app():
             Route("/api/cite/{arxiv}", _route_cite),
         ],
     )
+
+    # Browsers cache rendered pages aggressively; while actively editing the
+    # source .md this serves stale HTML and looks like "render still broken".
+    # Force no-cache so a plain refresh always re-renders from disk.
+    async def _no_cache_app(scope, receive, send):
+        async def _send(message):
+            if message.get("type") == "http.response.start":
+                headers = [
+                    (k, v) for (k, v) in message.get("headers", [])
+                    if k.lower() != b"cache-control"
+                ]
+                headers.append(
+                    (b"cache-control", b"no-cache, no-store, must-revalidate")
+                )
+                message = {**message, "headers": headers}
+            await send(message)
+        await app(scope, receive, _send)
+
+    return _no_cache_app
 
 
 def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
