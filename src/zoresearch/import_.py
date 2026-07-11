@@ -104,7 +104,7 @@ def _shallow_to_zotero_item(s: dict, target: ResolvedTarget) -> dict:
         else:
             creators.append({"creatorType": "author", "name": name})
     item = {
-        "title": s.get("title", "") or f"arXiv:{target.arxiv_id}" if target.arxiv_id else "Untitled",
+        "title": s.get("title", "") or (f"arXiv:{target.arxiv_id}" if target.arxiv_id else "Untitled"),
         "creators": creators,
         "date": str(s.get("year", "")),
         "DOI": target.doi or s.get("doi", ""),
