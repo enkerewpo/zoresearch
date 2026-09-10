@@ -423,6 +423,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
 }
 
 .wrap{display:grid;grid-template-columns:260px minmax(0,1fr) 220px;min-height:100vh}
+.wrap:not(:has(nav.toc)){grid-template-columns:260px minmax(0,1fr)}
 
 /* --- left sidebar --- */
 nav.side{position:sticky;top:0;height:100vh;overflow-y:auto;
@@ -456,6 +457,29 @@ nav.side summary::before{content:"▸";display:inline-block;width:12px;
 nav.side details[open]>summary::before{transform:rotate(90deg)}
 nav.side summary:hover{background:var(--border-soft);color:var(--fg)}
 nav.side li.dir{margin:1px 0}
+nav.side .ws-label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--fg-faint);margin:0 0 4px}
+nav.side select.ws-switch{width:100%;font:inherit;font-size:13px;padding:6px 8px;
+  border:1px solid var(--border-soft);border-radius:6px;background:var(--bg);color:var(--fg);
+  margin:0 0 10px}
+nav.side input.tree-filter{width:100%;font:inherit;font-size:12.5px;padding:5px 8px;
+  border:1px solid var(--border-soft);border-radius:6px;background:var(--bg);color:var(--fg);
+  margin:0 0 10px}
+nav.side .ws-head{display:flex;align-items:baseline;justify-content:space-between;
+  margin:4px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--border-soft)}
+nav.side .ws-head a{display:inline;padding:0;font-weight:600;color:var(--fg);font-size:13px}
+nav.side .n{margin-left:auto;padding-left:8px;font-size:11px;color:var(--fg-faint);font-variant-numeric:tabular-nums}
+nav.side summary .n{margin-left:auto}
+nav.side a .ext{margin-left:6px;font-size:10px;color:var(--fg-faint);text-transform:uppercase;
+  border:1px solid var(--border-soft);border-radius:3px;padding:0 3px;vertical-align:1px}
+nav.side ul.ws-list a{display:flex;padding:5px 8px}
+main:has(iframe.viewer){padding:0;max-width:none;display:flex;flex-direction:column;height:100vh}
+.viewer-bar{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px;
+  border-bottom:1px solid var(--border-soft);font-family:var(--sans);font-size:13px}
+.viewer-bar .spacer{flex:1}
+.viewer-bar a{border:0}
+.viewer-bar .hint{color:var(--fg-faint);font-size:12px}
+iframe.viewer{flex:1;width:100%;border:0;background:#fff}
 
 /* --- main column --- */
 main{padding:48px 64px 80px;max-width:1024px;width:100%;margin:0 auto;font-family:var(--serif)}
@@ -605,21 +629,24 @@ _HLJS_HEAD = (
 )
 
 
-def _build_ws_tree(ws_path, allowed_exts=(".md",), skip_hidden=True):
+_TREE_EXTS = (".md", ".pdf", ".pptx", ".html")
+_TREE_SKIP_DIRS = {"raw", "__pycache__", "node_modules", ".cache", ".venv"}
+
+
+def _build_ws_tree(ws_path, allowed_exts=_TREE_EXTS, skip_hidden=True):
     """Walk ws_path; return nested dict {name: <dict or None>}.  None = leaf file."""
     root = {}
     for p in sorted(ws_path.rglob("*")):
-        if skip_hidden and any(part.startswith(".") for part in p.relative_to(ws_path).parts):
+        parts_rel = p.relative_to(ws_path).parts
+        if skip_hidden and any(part.startswith(".") for part in parts_rel):
             continue
-        if p.is_file() and p.suffix.lower() not in allowed_exts:
+        if any(part in _TREE_SKIP_DIRS for part in parts_rel[:-1]):
             continue
-        if p.is_dir():
+        if p.is_dir() or p.suffix.lower() not in allowed_exts:
             continue
-        rel = p.relative_to(ws_path)
         node = root
-        parts = list(rel.parts)
-        for i, part in enumerate(parts):
-            if i == len(parts) - 1:
+        for i, part in enumerate(parts_rel):
+            if i == len(parts_rel) - 1:
                 node[part] = None
             else:
                 child = node.get(part)
@@ -629,22 +656,27 @@ def _build_ws_tree(ws_path, allowed_exts=(".md",), skip_hidden=True):
     return root
 
 
+def _count_leaves(node) -> int:
+    return sum(1 if child is None else _count_leaves(child) for child in node.values())
+
+
 def _render_ws_tree(node, ws_name: str, active_path: str, current_rel: str = "") -> list[str]:
-    """Render nested dict as <ul class='tree'>. Auto-opens ancestors of active_path."""
+    """Nested <ul class='tree'>; folders first, ancestors of active_path opened."""
     out = ['<ul class="tree">']
-    # folders first (dict values), then files
     items = sorted(node.items(), key=lambda kv: (kv[1] is None, kv[0].lower()))
     for name, child in items:
         new_rel = f"{current_rel}/{name}" if current_rel else name
-        if child is None:  # leaf
+        if child is None:
             url = f"/w/{ws_name}/{new_rel}"
             cls = "active" if new_rel == active_path else ""
-            label = name[:-3] if name.endswith(".md") else name
-            out.append(f'<li><a class="{cls}" href="{url}">{html.escape(label)}</a></li>')
-        else:  # folder
+            stem, ext = (name[:-3], "") if name.endswith(".md") else (name.rsplit(".", 1)[0], name.rsplit(".", 1)[-1])
+            badge = f'<span class="ext">{html.escape(ext)}</span>' if ext else ""
+            out.append(f'<li><a class="{cls}" href="{url}" title="{html.escape(name)}">{html.escape(stem)}{badge}</a></li>')
+        else:
             is_open = active_path == new_rel or active_path.startswith(new_rel + "/")
             open_attr = " open" if is_open else ""
-            out.append(f'<li class="dir"><details{open_attr}><summary>{html.escape(name)}</summary>')
+            out.append(f'<li class="dir"><details{open_attr}><summary>{html.escape(name)}'
+                       f'<span class="n">{_count_leaves(child)}</span></summary>')
             out.extend(_render_ws_tree(child, ws_name, active_path, new_rel))
             out.append('</details></li>')
     out.append('</ul>')
@@ -652,18 +684,47 @@ def _render_ws_tree(node, ws_name: str, active_path: str, current_rel: str = "")
 
 
 def _sidebar(active_ws: str = "", active_path: str = "") -> str:
-    parts = ['<nav class="side">', '<a class="brand" href="/" style="text-decoration:none">zoresearch</a>']
+    parts = ['<nav class="side">', '<a class="brand" href="/">zoresearch</a>']
     workspaces = workspace.list_workspaces()
     if not workspaces:
         parts.append('<div class="empty">No workspaces yet. Use <code>zr ws init &lt;name&gt;</code>.</div>')
+        parts.append("</nav>")
+        return "".join(parts)
+    # workspace switcher: one <select>, navigates on change
+    parts.append('<label class="ws-label">Stable</label>')
+    parts.append('<select class="ws-switch" onchange="if(this.value)location.href=this.value">')
+    parts.append(f'<option value="/"{"" if active_ws else " selected"}>— 选择 workspace —</option>')
     for ws in workspaces:
-        ws_path = WORKSPACE / ws
-        is_active = (ws == active_ws)
-        ws_label_class = "ws active" if is_active else "ws"
-        parts.append(f'<div class="{ws_label_class}"><a href="/w/{ws}/" style="color:inherit;text-decoration:none">{html.escape(ws)}</a></div>')
-        tree = _build_ws_tree(ws_path, allowed_exts=(".md", ".pdf"))
+        n = _count_leaves(_build_ws_tree(WORKSPACE / ws))
+        sel = " selected" if ws == active_ws else ""
+        parts.append(f'<option value="/w/{ws}/"{sel}>{html.escape(ws)} ({n})</option>')
+    parts.append('</select>')
+    if active_ws:
+        tree = _build_ws_tree(WORKSPACE / active_ws)
+        parts.append('<input class="tree-filter" type="search" placeholder="筛选文件…" '
+                     'oninput="zrFilterTree(this.value)" aria-label="filter">')
+        parts.append(f'<div class="ws-head"><a href="/w/{active_ws}/">{html.escape(active_ws)}</a>'
+                     f'<span class="n">{_count_leaves(tree)} 个文件</span></div>')
         if tree:
-            parts.extend(_render_ws_tree(tree, ws, active_path if is_active else ""))
+            parts.extend(_render_ws_tree(tree, active_ws, active_path))
+        else:
+            parts.append('<div class="empty">空的</div>')
+    else:
+        parts.append('<ul class="ws-list">')
+        for ws in workspaces:
+            n = _count_leaves(_build_ws_tree(WORKSPACE / ws))
+            parts.append(f'<li><a href="/w/{ws}/">{html.escape(ws)}<span class="n">{n}</span></a></li>')
+        parts.append('</ul>')
+    parts.append('<script>function zrFilterTree(q){q=q.trim().toLowerCase();'
+                 'var nav=document.querySelector("nav.side");'
+                 'nav.querySelectorAll("ul.tree li").forEach(function(li){'
+                 'var a=li.querySelector(":scope>a");'
+                 'if(a){li.style.display=(!q||a.textContent.toLowerCase().indexOf(q)>=0)?"":"none";}});'
+                 'nav.querySelectorAll("ul.tree li.dir").forEach(function(li){'
+                 'var vis=li.querySelectorAll("li:not(.dir)");var any=false;'
+                 'vis.forEach(function(x){if(x.style.display!=="none")any=true;});'
+                 'li.style.display=any?"":"none";var d=li.querySelector(":scope>details");'
+                 'if(q&&any)d.open=true;});}</script>')
     parts.append("</nav>")
     return "".join(parts)
 
@@ -936,6 +997,32 @@ def _route_workspace(request):
     return HTMLResponse(_page(name, body, _sidebar(active_ws=name)))
 
 
+def _viewer_bar(ws: str, rel: str, raw_url: str, extra: str = "") -> str:
+    return (f'<div class="meta viewer-bar"><a href="/w/{ws}/" class="crumb">{html.escape(ws)}</a>'
+            f'<span class="sep">›</span><span>{html.escape(rel)}</span>'
+            f'<span class="spacer"></span>{extra}<a href="{raw_url}" download>下载</a></div>')
+
+
+def _viewer_frame(src: str) -> str:
+    return f'<iframe class="viewer" src="{src}" title="viewer"></iframe>'
+
+
+def _pptx_to_pdf(f):
+    """soffice -> PDF cached under <workspace>/.cache, refreshed on mtime."""
+    import subprocess
+    cache = f.parent / ".cache"
+    cache.mkdir(exist_ok=True)
+    out = cache / (f.stem + ".pdf")
+    if out.exists() and out.stat().st_mtime >= f.stat().st_mtime:
+        return out
+    try:
+        subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(cache), str(f)],
+                       check=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=180)
+    except Exception:  # noqa: BLE001
+        return None
+    return out if out.exists() else None
+
+
 def _route_file(request):
     from starlette.responses import HTMLResponse
     name = request.path_params["ws"]
@@ -950,13 +1037,43 @@ def _route_file(request):
         return HTMLResponse(_page("403", "<h1>forbidden</h1>", _sidebar()), status_code=403)
     if not f.is_file():
         return HTMLResponse(_page("404", f"<h1>not found: {html.escape(rel)}</h1>", _sidebar(active_ws=name)), status_code=404)
-    if f.suffix.lower() != ".md":
-        from starlette.responses import FileResponse
+    from starlette.responses import FileResponse
+    q = request.query_params
+    ext = f.suffix.lower()
+    raw_url = f"/w/{name}/{rel}?raw=1"
+    if "raw" in q:
+        return FileResponse(f)
+    if "preview" in q and ext == ".pptx":
+        pdf = _pptx_to_pdf(f)
+        if pdf is None:
+            return HTMLResponse("<h1>conversion failed</h1>", status_code=500)
+        return FileResponse(pdf, media_type="application/pdf")
+    # embedded viewers keep the sidebar; the raw document lives in an iframe
+    if ext == ".pdf":
+        return HTMLResponse(_page(f.stem, _viewer_bar(name, rel, raw_url) + _viewer_frame(raw_url),
+                                  _sidebar(active_ws=name, active_path=rel)))
+    if ext == ".html":
+        return HTMLResponse(_page(f.stem, _viewer_bar(name, rel, raw_url) + _viewer_frame(raw_url),
+                                  _sidebar(active_ws=name, active_path=rel)))
+    if ext == ".pptx":
+        pdf = _pptx_to_pdf(f)
+        if pdf is None:
+            body = _viewer_bar(name, rel, raw_url) + "<p class=\"meta\">soffice 转换失败,只能下载。</p>"
+        else:
+            body = _viewer_bar(name, rel, raw_url) + _viewer_frame(f"/w/{name}/{rel}?preview=1")
+        return HTMLResponse(_page(f.stem, body, _sidebar(active_ws=name, active_path=rel)))
+    if ext != ".md":
         return FileResponse(f)
     text = f.read_text(encoding="utf-8")
     meta, body_md = split_frontmatter(text)
     if is_slides(meta):
-        return HTMLResponse(render_slides(meta, body_md, f.stem, _logo_src(meta, f.parent)))
+        if "deck" in q:
+            return HTMLResponse(render_slides(meta, body_md, f.stem, _logo_src(meta, f.parent)))
+        deck_url = f"/w/{name}/{rel}?deck=1"
+        bar = _viewer_bar(name, rel, raw_url, extra=f'<a href="{deck_url}" target="_blank">全屏演示</a>'
+                          '<span class="hint">全屏后 ⌘P 导出 PDF</span>')
+        return HTMLResponse(_page(f.stem, bar + _viewer_frame(deck_url),
+                                  _sidebar(active_ws=name, active_path=rel)))
     body_html = render_md(body_md)
     body_with_anchors, toc_html = inject_anchors_and_toc(body_html)
     title = f.stem
