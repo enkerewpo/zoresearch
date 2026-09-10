@@ -474,7 +474,7 @@ nav.side a .ext{margin-left:6px;font-size:10px;color:var(--fg-faint);text-transf
   border:1px solid var(--border-soft);border-radius:3px;padding:0 3px;vertical-align:1px}
 nav.side ul.ws-list a{display:flex;padding:5px 8px}
 main:has(iframe.viewer){padding:0;max-width:none;display:flex;flex-direction:column;height:100vh}
-.viewer-bar{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px;
+main .meta.viewer-bar{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px;flex-wrap:nowrap;
   border-bottom:1px solid var(--border-soft);font-family:var(--sans);font-size:13px}
 .viewer-bar .spacer{flex:1}
 .viewer-bar a{border:0}

@@ -131,7 +131,7 @@ def _resolve_collection_key(name: str | None) -> str | None:
     if not name:
         return None
     try:
-        with httpx.Client(timeout=10) as c:
+        with httpx.Client(timeout=10, trust_env=False) as c:
             r = c.get(f"{ZOTERO_API}/api/users/0/collections", params={"limit": 200})
             r.raise_for_status()
             for col in r.json():
@@ -220,7 +220,7 @@ def import_one(value: str, *, collection: str | None = None,
     # hits after the connector save completes. Target syntax: L<libraryID>/C<collKey>;
     # for the personal library that's L1/C<key>.
     payload = {"sessionID": sess, "uri": target.url, "items": [item]}
-    with httpx.Client(timeout=120) as c:
+    with httpx.Client(timeout=120, trust_env=False) as c:
         r1 = c.post(f"{ZOTERO_API}/connector/saveItems", json=payload)
         if r1.status_code not in (200, 201):
             return ImportResult(target=target, error=f"saveItems {r1.status_code}: {r1.text[:120]}", metadata=item)

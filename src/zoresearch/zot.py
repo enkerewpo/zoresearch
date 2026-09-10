@@ -371,7 +371,7 @@ def stats() -> dict:
 
 def zotero_running() -> bool:
     try:
-        with httpx.Client(timeout=2) as c:
+        with httpx.Client(timeout=2, trust_env=False) as c:
             r = c.get(f"{ZOTERO_LOCAL_API}/connector/ping")
             return r.status_code in (200, 404)  # 404 if endpoint name shifts
     except httpx.HTTPError:
@@ -380,7 +380,7 @@ def zotero_running() -> bool:
 
 def bbt_rpc(method: str, params: list | None = None) -> object:
     payload = {"jsonrpc": "2.0", "method": method, "params": params or [], "id": 1}
-    with httpx.Client(timeout=10) as c:
+    with httpx.Client(timeout=10, trust_env=False) as c:
         r = c.post(
             f"{ZOTERO_LOCAL_API}/better-bibtex/json-rpc",
             json=payload,
