@@ -126,6 +126,11 @@ def _make_md():
             # lines around display math), so the single-$ rule can't greedily
             # mis-pair across newlines and swallow prose into a math span.
             double_inline=True,
+            # A bare '$' in prose is almost always money, and "$0.03 ... $0.12"
+            # pairs into a math span that swallows the sentence between them.
+            # Refusing to open on a digit costs no real notation and keeps
+            # prices from eating paragraphs.
+            allow_digits=False,
             renderer=lambda content, opts: (
                 "\\[" + content + "\\]"
                 if opts.get("display_mode")
@@ -341,7 +346,7 @@ _PAGE_CSS = r"""
 
 /* Latin Modern Sans (real LM Sans webfont, sugina-dev) via jsDelivr —
    verified HTTP 200 + permissive CORS. CJK glyphs fall through to
-   PingFang SC / Noto Sans SC (these faces cover Latin only).
+   Noto Sans CJK SC (these faces cover Latin only).
    NB: clean lining digits come from body `lnum` below, not from the
    font swap — LM Sans' oldstyle figures (the old `onum`) were the
    "weird digits". */
@@ -355,14 +360,14 @@ _PAGE_CSS = r"""
   src:url("https://cdn.jsdelivr.net/gh/sugina-dev/latin-modern-web@1.0.1/font/lmsans-boldoblique-webfont.woff") format("woff")}
 
 :root{
-  /* 西文 Latin Modern Sans + CJK 黑体:Latin 字符落 Latin Modern Sans(系统已装
-     的 lmsans otf),CJK 字符 fall through 到 PingFang SC / Noto Sans SC。
-     西文 TeX 学术感 + 中文清爽。 */
-  --serif:"Latin Modern Sans","Source Serif 4","Iowan Old Style",Charter,
-          "PingFang SC","Noto Sans SC","Hiragino Sans GB","Microsoft YaHei",
-          "WenQuanYi Micro Hei",sans-serif;
+  /* 正文用为屏幕设计的衬线体。Latin Modern Sans 是印刷字体,17px 下笔画偏细、
+     字怀偏小,长文读着累,所以它退到链尾;需要 TeX 观感的地方(.sym)仍可单独取用。
+     CJK 字符统一落到 Noto Sans CJK SC，全站一种中文字面。 */
+  --serif:"Source Serif 4","Iowan Old Style",Charter,"Palatino",
+          "Noto Sans CJK SC","Noto Sans SC",
+          "Latin Modern Sans",serif;
   --sans:"Inter",system-ui,-apple-system,BlinkMacSystemFont,
-         "PingFang SC","Noto Sans SC","Hiragino Sans GB","Microsoft YaHei",
+         "Noto Sans CJK SC","Noto Sans SC",
          sans-serif;
   --mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,"JetBrains Mono",Consolas,monospace;
 
@@ -609,7 +614,6 @@ _KATEX_HEAD = (
     'onload="renderMathInElement(document.body,{'
     'delimiters:['
     '{left:\'$$\',right:\'$$\',display:true},'
-    '{left:\'$\',right:\'$\',display:false},'
     '{left:\'\\\\(\',right:\'\\\\)\',display:false},'
     '{left:\'\\\\[\',right:\'\\\\]\',display:true}'
     '],throwOnError:false})"></script>'
