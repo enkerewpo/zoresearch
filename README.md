@@ -1,6 +1,18 @@
-<p align="center"><img src="assets/logo.svg" width="128" alt="zoresearch logo"/></p>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/logo.svg" width="112" alt="zorsch logo"/>
+</p>
 
-# zoresearch
+<h1 align="center">zorsch</h1>
+
+<p align="center">A research copilot CLI on top of your local Zotero library</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/v/zorsch?color=0a1828" alt="PyPI"/></a>
+  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/pyversions/zorsch?color=0a1828" alt="Python"/></a>
+  <a href="https://github.com/enkerewpo/zoresearch/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/zorsch?color=0a1828" alt="License"/></a>
+</p>
+
+<p align="center"><code>pip install zorsch</code> &nbsp;·&nbsp; command: <code>zr</code></p>
 
 A small research copilot built on top of a local Zotero library. It browses what you already have, finds the related work you don't, keeps workspaces around a research question, and keeps durable per-paper notes.
 
@@ -19,16 +31,37 @@ The `zr` CLI is the load-bearing layer; the skills under `.agents/skills/` are t
 
 ## Install
 
+**1. Prerequisites.** Python 3.10 or newer, and the Zotero desktop app. Keep Zotero running whenever you import, because new items go in through its connector API. The [Better BibTeX](https://retorque.re/zotero-better-bibtex/) plugin is recommended for stable citekeys.
+
+**2. Install the package.** It installs the `zr` command.
+
 ```bash
-pip install zorsch               # core CLI, installs the `zr` command
-pip install "zorsch[web]"        # + browser reader / slides  (zr web)
-pip install "zorsch[mineru]"     # + MinerU PDF engine        (zr parse)
-pip install "zorsch[embed]"      # + local embeddings         (optional)
+pip install zorsch                 # core CLI
+pip install "zorsch[web]"          # + browser reader / slides  (zr web)
+pip install "zorsch[mineru]"       # + MinerU PDF engine        (zr parse)
+pip install "zorsch[embed]"        # + local embeddings         (optional)
 ```
 
-Installed this way, `data/` and `workspace/` live in the per-user data directory (on macOS `~/Library/Application Support/zorsch`). Set `ZORESEARCH_HOME` to put them elsewhere. From a source checkout, `pip install -e .` keeps them inside the repository.
+To keep it out of your project environments, install it as a tool instead: `uv tool install "zorsch[web]"` or `pipx install "zorsch[web]"`.
 
-Requires Python 3.10+ and a local Zotero install. Zotero must be **running** for imports (they go through the connector API). The [Better BibTeX](https://retorque.re/zotero-better-bibtex/) plugin is recommended for stable citekeys.
+**3. Check the setup.**
+
+```bash
+zr doctor
+```
+
+It finds your Zotero data directory (`~/Zotero` by default, or `ZORESEARCH_ZOTERO_DIR`), checks that Zotero and Better BibTeX respond, and shows where zorsch keeps its own files.
+
+**4. Optional: MinerU for PDF parsing.** `zr parse` uses MinerU when a token is configured and falls back to `pymupdf4llm` otherwise. Put the token in `~/.zoresearch/config.toml` or the `MINERU_TOKEN` environment variable:
+
+```toml
+[mineru]
+token = "..."
+```
+
+**Where files go.** Transcripts, notes and workspaces live in the per-user data directory (on macOS `~/Library/Application Support/zorsch`). Set `ZORESEARCH_HOME` to put them elsewhere. From a source checkout (`git clone` then `pip install -e .`) they stay inside the repository.
+
+**Upgrade** with `pip install -U zorsch`.
 
 ## Quick start
 
