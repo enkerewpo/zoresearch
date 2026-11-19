@@ -27,7 +27,7 @@ from typing import Literal
 
 import httpx
 
-from . import openalex, zot
+from . import jos, openalex, zot
 
 ZOTERO_API = "http://127.0.0.1:23119"
 Source = Literal["doi", "arxiv", "url", "unknown"]
@@ -121,6 +121,13 @@ def _shallow_to_zotero_item(s: dict, target: ResolvedTarget) -> dict:
         item["itemType"] = "journalArticle"
         if s.get("venue"):
             item["publicationTitle"] = s["venue"]
+        for key in ("volume", "issue", "pages"):
+            if s.get(key):
+                item[key] = s[key]
+        if s.get("date"):
+            item["date"] = s["date"]
+        for kw in s.get("keywords") or []:
+            item.setdefault("tags", []).append({"tag": kw})
     return item
 
 
@@ -151,19 +158,29 @@ def _resolve_collection_id(name: str | None) -> int | None:
     """
     if not name:
         return None
-    try:
-        import sqlite3
-        from .paths import ZOTERO_DB
-        conn = sqlite3.connect(f"file:{ZOTERO_DB}?mode=ro&immutable=1", uri=True)
-        row = conn.execute(
-            "SELECT collectionID FROM collections "
-            "WHERE LOWER(collectionName)=LOWER(?) "
-            "AND collectionID NOT IN (SELECT collectionID FROM deletedCollections)",
-            (name,),
-        ).fetchone()
-        return row[0] if row else None
-    except Exception:
-        return None
+    import shutil, sqlite3, tempfile
+    from .paths import ZOTERO_DB
+    # Zotero holds an exclusive lock while it runs, and an immutable read skips
+    # the WAL, where a collection created minutes ago still lives. Read a copy
+    # of the database together with its WAL instead.
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "zotero.sqlite"
+        shutil.copy2(ZOTERO_DB, db)
+        wal = ZOTERO_DB.with_name(ZOTERO_DB.name + "-wal")
+        if wal.exists():
+            shutil.copy2(wal, db.with_name(db.name + "-wal"))
+        try:
+            conn = sqlite3.connect(db)
+            row = conn.execute(
+                "SELECT collectionID FROM collections "
+                "WHERE LOWER(collectionName)=LOWER(?) "
+                "AND collectionID NOT IN (SELECT collectionID FROM deletedCollections)",
+                (name,),
+            ).fetchone()
+            conn.close()
+            return row[0] if row else None
+        except sqlite3.Error:
+            return None
 
 
 def _download_arxiv_pdf(arxiv_id: str, dest: Path) -> Path:
@@ -194,24 +211,39 @@ def import_one(value: str, *, collection: str | None = None,
         return ImportResult(target=target, error=f"collection {collection!r} not found in Zotero")
 
     # 1) metadata
-    if target.kind == "arxiv":
-        work = openalex.by_doi(target.doi)
-    elif target.kind == "doi":
-        work = openalex.by_doi(target.doi)
+    pdf_bytes: bytes | None = None
+    jos_id = jos.article_id(value)
+    if jos_id:
+        # Journal of Software: OpenAlex has no record, the journal page has everything.
+        shallow, pdf_bytes = jos.fetch(jos_id)
+        target = ResolvedTarget(kind="doi", doi=shallow["doi"], url=shallow["url"])
     else:
-        work = None
-    shallow = openalex.shallow(work) if work else {}
+        if target.kind == "arxiv":
+            work = openalex.by_doi(target.doi)
+        elif target.kind == "doi":
+            work = openalex.by_doi(target.doi)
+        else:
+            work = None
+        shallow = openalex.shallow(work) if work else {}
     item = _shallow_to_zotero_item(shallow, target)
     item.setdefault("tags", []).append({"tag": "zr-imported"})
 
-    # 2) PDF (arXiv only — DOIs are usually paywalled)
-    pdf_bytes: bytes | None = None
+    # 2) PDF (arXiv only — DOIs are usually paywalled; JOS serves its own)
     if target.kind == "arxiv":
         pdf_dir = pdf_dir or Path("data/imports")
         pdf_path = _download_arxiv_pdf(target.arxiv_id, pdf_dir / f"{target.arxiv_id}.pdf")
         pdf_bytes = pdf_path.read_bytes()
 
-    # 3) push to Zotero — saveItems + saveAttachment in one connection, no sleep
+    # 3) push to Zotero
+    pdf_url = f"https://arxiv.org/pdf/{target.arxiv_id}" if target.arxiv_id else target.url
+    pdf_title = "arXiv Fulltext PDF" if target.kind == "arxiv" else "Fulltext PDF"
+    return _push(item, target, pdf_bytes, pdf_url, pdf_title, coll_id)
+
+
+def _push(item: dict, target: ResolvedTarget, pdf_bytes: bytes | None,
+          pdf_url: str, pdf_title: str, coll_id: int | None) -> ImportResult:
+    """saveItems + saveAttachment in one connection, no sleep, then file into
+    the collection."""
     sess = f"zr-import-{int(time.time() * 1000)}"
     # NOTE: Zotero's /connector/saveItems endpoint ignores any `collections`
     # field in the payload — it always files to the active UI target. To file
@@ -228,9 +260,7 @@ def import_one(value: str, *, collection: str | None = None,
         if pdf_bytes:
             metadata_hdr = {
                 "sessionID": sess, "id": f"a-{target.arxiv_id or 'doi'}",
-                "url": f"https://arxiv.org/pdf/{target.arxiv_id}" if target.arxiv_id else target.url,
-                "title": "arXiv Fulltext PDF" if target.kind == "arxiv" else "Fulltext PDF",
-                "mimeType": "application/pdf",
+                "url": pdf_url, "title": pdf_title, "mimeType": "application/pdf",
             }
             r2 = c.post(
                 f"{ZOTERO_API}/connector/saveAttachment",
@@ -257,6 +287,76 @@ def import_one(value: str, *, collection: str | None = None,
             except httpx.HTTPError as e:
                 result.error = (result.error or "") + f" updateSession error: {e}"
         return result
+
+
+_RIS_TYPES = {"JOUR": "journalArticle", "MANSCPT": "manuscript", "CONF": "conferencePaper",
+              "CPAPER": "conferencePaper", "RPRT": "report", "UNPB": "manuscript"}
+
+
+def parse_ris(path: Path) -> list[tuple[dict, Path | None]]:
+    """Read a RIS file into (Zotero item JSON, local PDF path) pairs.
+
+    For papers with no DOI or arXiv record, such as submissions under review:
+    the metadata is written by hand and the PDF is already on disk (``L1``).
+    """
+    out, rec = [], None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^([A-Z][A-Z0-9])  - ?(.*)$", line)
+        if not m:
+            continue
+        tag, val = m.group(1), m.group(2).strip()
+        if tag == "TY":
+            rec = {"TY": val}
+        elif tag == "ER" and rec is not None:
+            out.append(_ris_to_item(rec))
+            rec = None
+        elif rec is not None:
+            rec.setdefault(tag, []).append(val)
+    return out
+
+
+def _ris_to_item(r: dict) -> tuple[dict, Path | None]:
+    one = lambda k: (r.get(k) or [""])[0]
+    kind = _RIS_TYPES.get(r["TY"], "journalArticle")
+    item: dict = {"itemType": kind, "title": one("TI"), "creators": []}
+    for a in r.get("AU", []):
+        last, _, first = a.partition(",")
+        item["creators"].append({"creatorType": "author", "lastName": last.strip(), "firstName": first.strip()})
+    venue = one("T2")
+    if kind == "journalArticle":
+        item.update(publicationTitle=venue, journalAbbreviation=one("J2"), volume=one("VL"),
+                    issue=one("IS"), DOI=one("DO"))
+    elif kind == "conferencePaper":
+        item["proceedingsTitle"] = venue
+    elif venue:
+        item["manuscriptType"] = venue
+    item["date"] = (one("DA") or one("PY")).replace("/", "-")
+    item["url"] = one("UR")
+    item["extra"] = "\n".join(r.get("N1", []))
+    item["tags"] = [{"tag": k} for k in r.get("KW", [])]
+    item = {k: v for k, v in item.items() if v not in ("", None)}
+    pdf = one("L1")
+    pdf_path = Path(pdf.removeprefix("file://")) if pdf else None
+    return item, pdf_path
+
+
+def import_ris(path: Path, *, collection: str | None = None) -> list[ImportResult]:
+    """Add every RIS record to Zotero with its local PDF attached."""
+    if not zot.zotero_running():
+        raise RuntimeError("Zotero is not reachable on 127.0.0.1:23119. Open Zotero and try again.")
+    coll_id = _resolve_collection_id(collection) if collection else None
+    if collection and coll_id is None:
+        raise RuntimeError(f"collection {collection!r} not found in Zotero")
+    results = []
+    for item, pdf in parse_ris(path):
+        target = ResolvedTarget(kind="doi" if item.get("DOI") else "unknown",
+                                doi=item.get("DOI", ""), url=item.get("url", ""))
+        if pdf and not pdf.exists():
+            results.append(ImportResult(target=target, error=f"PDF not found: {pdf}", metadata=item))
+            continue
+        pdf_bytes = pdf.read_bytes() if pdf else None
+        results.append(_push(item, target, pdf_bytes, target.url, pdf.name if pdf else "", coll_id))
+    return results
 
 
 # Back-compat shim — the CLI used to call this.

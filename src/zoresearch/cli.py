@@ -152,11 +152,19 @@ def annotations(key: str):
 
 @app.command(name="import")
 def import_cmd(
-    value: str = typer.Argument(..., help="DOI, arXiv id, or URL"),
+    value: str = typer.Argument(..., help="DOI, arXiv id, URL, or a .ris file whose records link local PDFs (L1)"),
     collection: str = typer.Option(None, "--collection", "-c", help="Zotero collection name to file the item under"),
 ):
     """Fetch metadata + PDF and add to Zotero (optionally into a collection)."""
     console.print(lore.say("import_pending"))
+    if value.lower().endswith(".ris") and Path(value).is_file():
+        failed = False
+        for res in import_.import_ris(Path(value), collection=collection):
+            mark = lore.ok if res.item_saved and not res.error else lore.err
+            pdf = "PDF ✓" if res.pdf_attached else "PDF ✗"
+            console.print(mark(f"{res.metadata.get('title', '?')}  [{pdf}] {res.error}"))
+            failed |= bool(res.error) or not res.item_saved
+        raise typer.Exit(1 if failed else 0)
     res = import_.import_one(value, collection=collection)
     if res.error and not res.item_saved:
         console.print(lore.err(res.error))
