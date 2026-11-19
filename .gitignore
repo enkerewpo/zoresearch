@@ -20,3 +20,6 @@ dist/
 .vscode/
 .idea/
 backup
+
+# data/ is sometimes a symlink to an external disk
+/data
