@@ -119,7 +119,7 @@ when possible and bring back conclusions, not raw text.
 
 ## Conventions
 
-- Python 3.10+. Source under `src/zoresearch/`.
+- Python 3.11+. Source under `src/zoresearch/`.
 - Comments only when the *why* is non-obvious.
 - The CLI uses `typer`, output via `rich` when interactive, plain text when piped.
 - Don't add features that aren't in `zr --help`. Extend the CLI first, then

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-19
+
+### Changed
+
+- README: a banner image at the top and restyled badges, including one that
+  links to Zotero, and a note that zorsch is not affiliated with Zotero.
+- Python 3.11 is now the minimum. The package already imported `tomllib`,
+  which Python 3.10 does not have, so it never ran on 3.10.
+
+### Fixed
+
+- The Python badge, which showed "missing" because the package declared no
+  Python version classifiers.
+
 ## [0.2.1] - 2026-11-19
 
 ### Changed
@@ -86,7 +100,8 @@ First release on PyPI, published as `zorsch`.
   `add`, `show`, `parse`, `related`).
 - Agent skills that compose these commands.
 
-[Unreleased]: https://github.com/enkerewpo/zoresearch/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/enkerewpo/zoresearch/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/enkerewpo/zoresearch/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/enkerewpo/zoresearch/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/enkerewpo/zoresearch/compare/40f298b...v0.2.0
 [0.1.0]: https://github.com/enkerewpo/zoresearch/commit/40f298b

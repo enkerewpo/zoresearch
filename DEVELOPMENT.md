@@ -95,7 +95,7 @@ is workspace-scoped and quota-bound) is enforced in the skills, not the CLI.
 
 ## Conventions
 
-- Python 3.10+, source under `src/zoresearch/`.
+- Python 3.11+, source under `src/zoresearch/`.
 - Comments only when the *why* is non-obvious.
 - Output via `rich` when interactive, plain text when piped.
 - Editable install for development: `pip install -e ".[web,mineru]"`.

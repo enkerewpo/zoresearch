@@ -1,18 +1,13 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/logo.svg" width="112" alt="zorsch logo"/>
+  <img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/banner.png" alt="zorsch: a research copilot for your Zotero library"/>
 </p>
-
-<h1 align="center">zorsch</h1>
-
-<p align="center">A research copilot CLI on top of your local Zotero library</p>
 
 <p align="center">
-  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/v/zorsch?color=0a1828" alt="PyPI"/></a>
-  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/pyversions/zorsch?color=0a1828" alt="Python"/></a>
-  <a href="https://github.com/enkerewpo/zoresearch/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/zorsch?color=0a1828" alt="License"/></a>
+  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/v/zorsch?style=for-the-badge&labelColor=0a1828&color=163a55&logo=pypi&logoColor=white&label=PyPI" alt="PyPI"/></a>
+  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/pyversions/zorsch?style=for-the-badge&labelColor=0a1828&color=163a55&logo=python&logoColor=white" alt="Python"/></a>
+  <a href="https://www.zotero.org/"><img src="https://img.shields.io/badge/works%20with-Zotero-CC2936?style=for-the-badge&labelColor=0a1828&logo=zotero&logoColor=white" alt="Works with Zotero"/></a>
+  <a href="https://github.com/enkerewpo/zoresearch/blob/main/LICENSE"><img src="https://img.shields.io/github/license/enkerewpo/zoresearch?style=for-the-badge&labelColor=0a1828&color=163a55" alt="License"/></a>
 </p>
-
-<p align="center"><code>pip install zorsch</code> &nbsp;·&nbsp; command: <code>zr</code></p>
 
 A small research copilot built on top of a local Zotero library. It browses what you already have, finds the related work you don't, keeps workspaces around a research question, and keeps durable per-paper notes.
 
@@ -31,7 +26,7 @@ The `zr` CLI is the load-bearing layer; the skills under `.agents/skills/` are t
 
 ## Install
 
-**1. Prerequisites.** Python 3.10 or newer, and the Zotero desktop app. Keep Zotero running whenever you import, because new items go in through its connector API. The [Better BibTeX](https://retorque.re/zotero-better-bibtex/) plugin is recommended for stable citekeys.
+**1. Prerequisites.** Python 3.11 or newer, and the Zotero desktop app. Keep Zotero running whenever you import, because new items go in through its connector API. The [Better BibTeX](https://retorque.re/zotero-better-bibtex/) plugin is recommended for stable citekeys.
 
 **2. Install the package.** It installs the `zr` command.
 
@@ -166,3 +161,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the module map, data flow, and how to a
 ## License
 
 MIT.
+
+---
+
+zorsch is an independent project and is not affiliated with or endorsed by the Corporation for Digital Scholarship. Zotero is a registered trademark of the Corporation for Digital Scholarship.
