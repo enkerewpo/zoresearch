@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "zoresearch"
-version = "0.1.0"
-description = "A personal research copilot built on a local Zotero library."
+name = "zorsch"
+version = "0.2.0"
+description = "A research copilot CLI (zr) built on a local Zotero library."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "wheatfox" }]
 dependencies = [
     "typer>=0.12",
@@ -31,7 +32,9 @@ web = [
 
 [project.scripts]
 zr = "zoresearch.cli:app"
-zoresearch = "zoresearch.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/enkerewpo/zoresearch"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

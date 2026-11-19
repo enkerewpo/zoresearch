@@ -20,12 +20,13 @@ The `zr` CLI is the load-bearing layer; the skills under `.agents/skills/` are t
 ## Install
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .                 # core CLI
-pip install -e ".[web]"          # + browser reader / slides  (zr web)
-pip install -e ".[mineru]"       # + MinerU PDF engine        (zr parse)
-pip install -e ".[embed]"        # + local embeddings         (optional)
+pip install zorsch               # core CLI, installs the `zr` command
+pip install "zorsch[web]"        # + browser reader / slides  (zr web)
+pip install "zorsch[mineru]"     # + MinerU PDF engine        (zr parse)
+pip install "zorsch[embed]"      # + local embeddings         (optional)
 ```
+
+Installed this way, `data/` and `workspace/` live in the per-user data directory (on macOS `~/Library/Application Support/zorsch`). Set `ZORESEARCH_HOME` to put them elsewhere. From a source checkout, `pip install -e .` keeps them inside the repository.
 
 Requires Python 3.10+ and a local Zotero install. Zotero must be **running** for imports (they go through the connector API). The [Better BibTeX](https://retorque.re/zotero-better-bibtex/) plugin is recommended for stable citekeys.
 

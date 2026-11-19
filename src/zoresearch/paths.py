@@ -20,24 +20,37 @@ def _detect_zotero_data_dir() -> Path:
     return home / "Zotero"
 
 
-def repo_root() -> Path:
+def repo_root() -> Path | None:
+    """The source checkout this module runs from, or None when installed as a package."""
     here = Path(__file__).resolve()
     for p in [here.parent, *here.parents]:
         if (p / "pyproject.toml").exists() and (p / "src" / "zoresearch").exists():
             return p
-    return here.parents[2]
+    return None
+
+
+def _root() -> Path:
+    # A checkout keeps data/ and workspace/ next to the code; a pip install
+    # has no such place, so it uses the per-user data directory.
+    env = os.environ.get("ZORESEARCH_HOME")
+    if env:
+        return Path(env).expanduser()
+    if (repo := repo_root()) is not None:
+        return repo
+    from platformdirs import user_data_dir
+    return Path(user_data_dir("zorsch"))
 
 
 ZOTERO_DIR: Path = _detect_zotero_data_dir()
 ZOTERO_DB: Path = ZOTERO_DIR / "zotero.sqlite"
 ZOTERO_STORAGE: Path = ZOTERO_DIR / "storage"
 
-REPO: Path = repo_root()
-DATA: Path = REPO / "data"
+ROOT: Path = _root()
+DATA: Path = ROOT / "data"
 TRANSCRIPTS: Path = DATA / "transcripts"
 CITATIONS: Path = DATA / "citations"
 NOTES: Path = DATA / "notes"
-WORKSPACE: Path = REPO / "workspace"
+WORKSPACE: Path = ROOT / "workspace"
 
 ZOTERO_LOCAL_API: str = "http://127.0.0.1:23119"
 

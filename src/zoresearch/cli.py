@@ -11,7 +11,7 @@ from rich.table import Table
 
 from . import import_, lore, notes as notes_mod, openalex, parse as parse_mod, related as related_mod, workspace as ws, zot
 from .config import CONFIG, USER_CONFIG
-from .paths import DATA, NOTES, REPO, TRANSCRIPTS, WORKSPACE, ZOTERO_DB, ensure_dirs
+from .paths import DATA, NOTES, ROOT, TRANSCRIPTS, WORKSPACE, ZOTERO_DB, ensure_dirs
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -34,7 +34,7 @@ def doctor():
     """Run environment checks: Zotero, BBT, MinerU, deps."""
     ensure_dirs()
     rows: list[tuple[str, str, str]] = []
-    rows.append(("repo root", "info", str(REPO)))
+    rows.append(("data root", "info", str(ROOT)))
     rows.append(("Zotero db", "ok" if ZOTERO_DB.exists() else "missing", str(ZOTERO_DB)))
     if ZOTERO_DB.exists():
         st = zot.stats()
