@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/banner.png" alt="zorsch: a research copilot for your Zotero library"/>
+  <img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/banner.svg" alt="zorsch: a research copilot for your Zotero library"/>
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/v/zorsch?style=for-the-badge&labelColor=0a1828&color=163a55&logo=pypi&logoColor=white&label=PyPI" alt="PyPI"/></a>
-  <a href="https://pypi.org/project/zorsch/"><img src="https://img.shields.io/pypi/pyversions/zorsch?style=for-the-badge&labelColor=0a1828&color=163a55&logo=python&logoColor=white" alt="Python"/></a>
-  <a href="https://www.zotero.org/"><img src="https://img.shields.io/badge/works%20with-Zotero-CC2936?style=for-the-badge&labelColor=0a1828&logo=zotero&logoColor=white" alt="Works with Zotero"/></a>
-  <a href="https://github.com/enkerewpo/zoresearch/blob/main/LICENSE"><img src="https://img.shields.io/github/license/enkerewpo/zoresearch?style=for-the-badge&labelColor=0a1828&color=163a55" alt="License"/></a>
+  <a href="https://pypi.org/project/zorsch/"><img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/badges/pypi.svg" height="28" alt="PyPI version"/></a>
+  <a href="https://pypi.org/project/zorsch/"><img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/badges/python.svg" height="28" alt="Python versions"/></a>
+  <a href="https://www.zotero.org/"><img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/badges/zotero.svg" height="28" alt="Works with Zotero"/></a>
+  <a href="https://github.com/enkerewpo/zoresearch/blob/main/LICENSE"><img src="https://raw.githubusercontent.com/enkerewpo/zoresearch/main/assets/badges/license.svg" height="28" alt="License: MIT"/></a>
 </p>
 
 A small research copilot built on top of a local Zotero library. It browses what you already have, finds the related work you don't, keeps workspaces around a research question, and keeps durable per-paper notes.
