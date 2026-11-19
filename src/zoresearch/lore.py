@@ -1,22 +1,6 @@
-"""Cosmetic Zelda flavor — Sheikah Slate vibes for the CLI.
+"""Terminal styling for zr's user-facing output.
 
-Visual language is borrowed from Breath of the Wild:
-
-* **Sheikah cyan** (bright_cyan) — active runes, the slate's display glow
-* **Triforce gold** (yellow) — the user, success, the journey
-* **Malice red** (bright_red) — corruption / errors / blocked paths
-* **Korok green** (bright_green) — quiet success / discoveries
-* **Royal blue** (blue) — info, ambient detail
-
-Iconography:
-
-* ``◈`` — filled hexagon, an *activated* shrine pedestal (success)
-* ``◇`` — empty hexagon, a *dormant* state (info / pending)
-* ``▲`` — Triforce triangle (warning / direction)
-* ``▽`` — inverted triangle, the Sheikah eye's teardrop (info)
-* ``◉`` — the Sheikah eye iris itself (the slate's gaze)
-
-Strictly user-facing strings. Set ``ZORESEARCH_PLAIN=1`` to mute everything.
+Set ``ZORESEARCH_PLAIN=1`` to drop colours and marks.
 """
 from __future__ import annotations
 
@@ -24,118 +8,70 @@ import os
 
 PLAIN = bool(os.environ.get("ZORESEARCH_PLAIN"))
 
+ACCENT = "bright_cyan"
+HIGHLIGHT = "yellow"
+ERROR = "bright_red"
+SUCCESS = "bright_green"
+DIM = "dim cyan"
 
-# --- palette (Rich style names) ----------------------------------------------
-
-SHEIKAH_CYAN = "bright_cyan"
-TRIFORCE_GOLD = "yellow"
-MALICE_RED = "bright_red"
-KOROK_GREEN = "bright_green"
-ROYAL_BLUE = "blue"
-ANCIENT_DIM = "dim cyan"
-
-
-# --- glyphs ------------------------------------------------------------------
-
-EYE = "◉"
-TEAR = "▽"
-HEX_ON = "◈"
-HEX_OFF = "◇"
-TRIANGLE = "▲"
-
-
-# --- banner ------------------------------------------------------------------
-
-BANNER = r"""
-                       [yellow]▲[/yellow]
-                      [yellow]▲ ▲[/yellow]                 [bright_cyan]◉[/bright_cyan]
-                     [yellow]▲▲▲▲▲[/yellow]                [bright_cyan]▽[/bright_cyan]
-       [dim cyan]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/dim cyan]
-       [bright_cyan bold]Z O R E S E A R C H[/bright_cyan bold]   ·   [bright_cyan]Sheikah Slate v0.1.0[/bright_cyan]
-       [dim cyan]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/dim cyan]
-       [italic dim]"It's dangerous to read alone. Take this."[/italic dim]
-"""
-
-
-def banner() -> str:
-    return "" if PLAIN else BANNER
-
-
-# --- helpers ----------------------------------------------------------------
+OK_MARK = "✓"
+OFF_MARK = "·"
+WARN_MARK = "!"
+BULLET = "•"
 
 
 def ok(plain: str) -> str:
-    """Sheikah-style success line. ``◈`` is an activated shrine pedestal."""
-    if PLAIN:
-        return f"ok  {plain}"
-    return f"[{KOROK_GREEN}]{HEX_ON}[/{KOROK_GREEN}] {plain}"
+    return f"ok  {plain}" if PLAIN else f"[{SUCCESS}]{OK_MARK}[/{SUCCESS}] {plain}"
 
 
 def warn(plain: str) -> str:
-    if PLAIN:
-        return f"warn  {plain}"
-    return f"[{TRIFORCE_GOLD}]{TRIANGLE}[/{TRIFORCE_GOLD}] {plain}"
+    return f"warn  {plain}" if PLAIN else f"[{HIGHLIGHT}]{WARN_MARK}[/{HIGHLIGHT}] {plain}"
 
 
 def err(plain: str) -> str:
-    if PLAIN:
-        return f"err  {plain}"
-    return f"[{MALICE_RED}]✕[/{MALICE_RED}] {plain}"
+    return f"err  {plain}" if PLAIN else f"[{ERROR}]✕[/{ERROR}] {plain}"
 
 
 def info(plain: str) -> str:
-    if PLAIN:
-        return f"info  {plain}"
-    return f"[{ANCIENT_DIM}]{TEAR}[/{ANCIENT_DIM}] {plain}"
+    return f"info  {plain}" if PLAIN else f"[{DIM}]{OFF_MARK}[/{DIM}] {plain}"
 
 
 def status_icon(state: str) -> str:
-    """Map doctor-style status to a Sheikah glyph + colour."""
+    """Map a doctor status to a coloured mark."""
     if PLAIN:
         return state
     return {
-        "ok":      f"[{KOROK_GREEN}]{HEX_ON}[/{KOROK_GREEN}] ok",
-        "warn":    f"[{TRIFORCE_GOLD}]{TRIANGLE}[/{TRIFORCE_GOLD}] warn",
-        "missing": f"[{MALICE_RED}]✕[/{MALICE_RED}] missing",
-        "off":     f"[{MALICE_RED}]✕[/{MALICE_RED}] off",
-        "info":    f"[{ANCIENT_DIM}]{HEX_OFF}[/{ANCIENT_DIM}] info",
+        "ok":      f"[{SUCCESS}]{OK_MARK}[/{SUCCESS}] ok",
+        "warn":    f"[{HIGHLIGHT}]{WARN_MARK}[/{HIGHLIGHT}] warn",
+        "missing": f"[{ERROR}]✕[/{ERROR}] missing",
+        "off":     f"[{ERROR}]✕[/{ERROR}] off",
+        "info":    f"[{DIM}]{OFF_MARK}[/{DIM}] info",
     }.get(state, state)
 
 
 def title(text: str) -> str:
-    if PLAIN:
-        return text
-    return f"[{SHEIKAH_CYAN} bold]{text}[/{SHEIKAH_CYAN} bold]"
+    return text if PLAIN else f"[{ACCENT} bold]{text}[/{ACCENT} bold]"
 
 
-# Translation table for command success messages. Source of truth for tone.
 PHRASES = {
-    "doctor_ready":     "Sheikah Slate online — all runes responding",
-    "doctor_partial":   "Sheikah Slate online — some runes need attention",
-    "lib_overview":     "Hyrule Compendium",
-    "import_added":     "+1 to the Compendium",
-    "import_pending":   "Sheikah Sensor reaching out…",
-    "parse_done":       "Shrine cleared — full text recovered",
-    "parse_cached":     "Shrine already cleared — using stored memory",
-    "related_done":     "Shrine Sensor pulse",
-    "trends_done":      "Surveying the Wilds",
-    "ws_created":       "Stable established",
-    "ws_seed_added":    "Korok seed planted",
-    "ws_related_done":  "Sensor pulse complete",
-    "notes_appended":   "Memory recovered",
-    "notes_empty":      "No memories here yet — the path is fresh",
-    "section_metadata": "Tablet entry",
+    "doctor_ready":     "All checks passed",
+    "doctor_partial":   "Some checks need attention",
+    "lib_overview":     "Library overview",
+    "import_added":     "Added to Zotero",
+    "import_pending":   "Importing…",
+    "parse_done":       "Parsed",
+    "parse_cached":     "Already parsed, using the cached transcript",
+    "related_done":     "Related work",
+    "trends_done":      "Topic trends",
+    "ws_created":       "Workspace created",
+    "ws_seed_added":    "Seed added",
+    "ws_related_done":  "Related work collected",
+    "notes_appended":   "Note appended",
+    "notes_empty":      "No notes yet",
     "section_abstract": "Abstract",
-    "section_notes":    "Recovered Memories",
-    "section_pdf":      "Tome attached",
-    "section_transcript": "Transcript ready",
-    "section_collection": "Filed under",
-    "section_tags":     "Glyphs",
-    "section_authors":  "Hands that wrote it",
+    "section_notes":    "Notes",
 }
 
 
 def say(key: str, *, plain: str | None = None) -> str:
-    if PLAIN and plain is not None:
-        return plain
     return PHRASES.get(key, plain or key)

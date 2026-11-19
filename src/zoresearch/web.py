@@ -9,7 +9,7 @@ Light Starlette app that renders `.md` files in any workspace with:
 - Pygments code highlighting
 - Sidebar: workspace tree
 
-Launched via ``zr web`` — Sheikah Slate map mode for the Stable.
+Launched via ``zr web``: a reader for workspaces.
 """
 from __future__ import annotations
 
@@ -695,7 +695,7 @@ def _sidebar(active_ws: str = "", active_path: str = "") -> str:
         parts.append("</nav>")
         return "".join(parts)
     # workspace switcher: one <select>, navigates on change
-    parts.append('<label class="ws-label">Stable</label>')
+    parts.append('<label class="ws-label">Workspace</label>')
     parts.append('<select class="ws-switch" onchange="if(this.value)location.href=this.value">')
     parts.append(f'<option value="/"{"" if active_ws else " selected"}>— 选择 workspace —</option>')
     for ws in workspaces:
@@ -971,7 +971,7 @@ def render_slides(meta: dict, body_md: str, fallback_title: str, logo_src: str =
 def _route_index(request):
     from starlette.responses import HTMLResponse
     body = ["<h1>zoresearch — workspace reader</h1>",
-            "<p class=\"meta\">Pick a Stable from the sidebar, or start with one of these:</p>"]
+            "<p class=\"meta\">Pick a workspace from the sidebar, or start with one of these:</p>"]
     workspaces = workspace.list_workspaces()
     if not workspaces:
         body.append('<p class="empty">No workspaces yet.</p>')

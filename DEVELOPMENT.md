@@ -29,11 +29,11 @@ skill — go through the CLI. Extend the CLI first, then let skills use it.
 | `openalex.py` | OpenAlex client — backward refs, forward citations, trends. Responses cached under `data/citations/`. |
 | `related.py` | composes `openalex` + `zot` to produce related work deduped against the library. |
 | `workspace.py` | create / list / inspect `workspace/<project>/` (`question.md`, `seeds.txt`, `related.md`, `notes.md`). |
-| `notes.py` | append-only per-paper Memories at `data/notes/<key>.md`. |
+| `notes.py` | append-only per-paper notes at `data/notes/<key>.md`. |
 | `web.py` | the browser reader and slide renderer (see below). Optional deps (`[web]`). |
 | `config.py` | loads `~/.zoresearch/config.toml` (MinerU token, etc.), mode `600`, outside the repo. |
 | `paths.py` | resolves the Zotero dir, `data/`, and `workspace/`. Single source of truth for locations. |
-| `lore.py` | the Sheikah Slate flavour — banners and strings, muted by `ZORESEARCH_PLAIN=1`. |
+| `lore.py` | terminal colours, marks and status strings; `ZORESEARCH_PLAIN=1` drops colours. |
 
 ## Data flow
 
@@ -62,8 +62,6 @@ def summary(key: str, sentences: int = typer.Option(3, "--n")):
 
 - Group related commands under a sub-app (`lib_app`, `ws_app`) with
   `app.add_typer(...)`.
-- Add a cosmetic alias the same way the existing ones do
-  (`zr sensor`, `zr shrine`, …) if it earns a Zelda name.
 - Don't add a feature that isn't reachable from `zr --help`.
 
 ## The web reader (`web.py`)
@@ -89,7 +87,7 @@ browser refresh.
 
 ## Skills
 
-`.claude/skills/<name>/SKILL.md` are short workflows that compose `zr` commands
+`.agents/skills/<name>/SKILL.md` are short workflows that compose `zr` commands
 (see `library`, `parse`, `related`, `trends`, `import`, `workspace`, `notes`).
 They contain no logic of their own — when a capability is missing, add it to the
 CLI first and have the skill call it. The load-bearing cost rule (MinerU parsing

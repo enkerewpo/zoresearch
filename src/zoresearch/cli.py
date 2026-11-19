@@ -16,14 +16,12 @@ from .paths import DATA, NOTES, REPO, TRANSCRIPTS, WORKSPACE, ZOTERO_DB, ensure_
 app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
-    help="zoresearch — Sheikah Slate for your Zotero library.",
+    help="zoresearch: research tools on top of a local Zotero library.",
 )
-lib_app = typer.Typer(no_args_is_help=True, help="Hyrule Compendium — browse and search the library.")
-ws_app = typer.Typer(no_args_is_help=True, help="Stables — research-question workspaces.")
+lib_app = typer.Typer(no_args_is_help=True, help="Browse and search the library.")
+ws_app = typer.Typer(no_args_is_help=True, help="Research-question workspaces.")
 app.add_typer(lib_app, name="lib")
 app.add_typer(ws_app, name="ws")
-app.add_typer(lib_app, name="compendium", help="(alias of lib) Hyrule Compendium — browse the library.")
-app.add_typer(ws_app, name="stable", help="(alias of ws) Stables — research-question workspaces.")
 
 console = Console()
 
@@ -35,8 +33,6 @@ console = Console()
 def doctor():
     """Run environment checks: Zotero, BBT, MinerU, deps."""
     ensure_dirs()
-    if (b := lore.banner()):
-        console.print(f"[cyan]{b}[/cyan]")
     rows: list[tuple[str, str, str]] = []
     rows.append(("repo root", "info", str(REPO)))
     rows.append(("Zotero db", "ok" if ZOTERO_DB.exists() else "missing", str(ZOTERO_DB)))
@@ -63,11 +59,11 @@ def doctor():
         rows.append(("pymupdf4llm", "warn", str(e)))
 
     table = Table(
-        title=f"[{lore.SHEIKAH_CYAN} bold]Sheikah Slate diagnostics[/{lore.SHEIKAH_CYAN} bold]",
-        border_style=lore.ANCIENT_DIM,
-        title_style=lore.SHEIKAH_CYAN,
+        title=f"[{lore.ACCENT} bold]zr diagnostics[/{lore.ACCENT} bold]",
+        border_style=lore.DIM,
+        title_style=lore.ACCENT,
     )
-    table.add_column("rune", style=lore.SHEIKAH_CYAN)
+    table.add_column("check", style=lore.ACCENT)
     table.add_column("status")
     table.add_column("detail", style="dim")
     statuses = [s for _, s, _ in rows]
@@ -76,10 +72,10 @@ def doctor():
     console.print(table)
     all_ok = all(s in ("ok", "info") for s in statuses)
     console.print(
-        f"[{lore.KOROK_GREEN if all_ok else lore.TRIFORCE_GOLD}]"
-        f"{lore.HEX_ON if all_ok else lore.TRIANGLE} "
+        f"[{lore.SUCCESS if all_ok else lore.HIGHLIGHT}]"
+        f"{lore.OK_MARK if all_ok else lore.WARN_MARK} "
         f"{lore.say('doctor_ready' if all_ok else 'doctor_partial')}"
-        f"[/{lore.KOROK_GREEN if all_ok else lore.TRIFORCE_GOLD}]"
+        f"[/{lore.SUCCESS if all_ok else lore.HIGHLIGHT}]"
     )
 
 
@@ -90,9 +86,9 @@ def show(key_or_citekey: str = typer.Argument(..., help="Zotero item key or BBT 
     if item is None:
         console.print(lore.err(f"not found: {key_or_citekey}"))
         raise typer.Exit(1)
-    cyan = lore.SHEIKAH_CYAN
-    dim = lore.ANCIENT_DIM
-    console.print(f"[{cyan} bold]{lore.EYE} {item.title}[/{cyan} bold]")
+    cyan = lore.ACCENT
+    dim = lore.DIM
+    console.print(f"[{cyan} bold]{lore.BULLET} {item.title}[/{cyan} bold]")
     console.print(f"  [{dim}]type     [/{dim}] {item.item_type}")
     console.print(f"  [{dim}]authors  [/{dim}] {', '.join(item.creators) or '—'}")
     console.print(f"  [{dim}]year     [/{dim}] {item.year or '—'}")
@@ -112,13 +108,13 @@ def show(key_or_citekey: str = typer.Argument(..., help="Zotero item key or BBT 
             console.print(f"    {p}")
     transcript = TRANSCRIPTS / item.key / "paper.md"
     if transcript.exists():
-        console.print(f"  [{dim}]transcript[/{dim}] [{lore.KOROK_GREEN}]{lore.HEX_ON}[/{lore.KOROK_GREEN}] {transcript}")
+        console.print(f"  [{dim}]transcript[/{dim}] [{lore.SUCCESS}]{lore.OK_MARK}[/{lore.SUCCESS}] {transcript}")
     if item.abstract:
-        console.print(f"\n[{cyan} bold]{lore.TEAR} {lore.say('section_abstract')}[/{cyan} bold]")
+        console.print(f"\n[{cyan} bold]{lore.BULLET} {lore.say('section_abstract')}[/{cyan} bold]")
         console.print(item.abstract)
     n = notes_mod.read(item.key)
     if n:
-        console.print(f"\n[{cyan} bold]{lore.EYE} {lore.say('section_notes')}[/{cyan} bold]")
+        console.print(f"\n[{cyan} bold]{lore.BULLET} {lore.say('section_notes')}[/{cyan} bold]")
         console.print(n)
 
 
@@ -178,7 +174,7 @@ def import_cmd(
     if res.error and res.item_saved:
         console.print(lore.warn(res.error))
     if res.metadata.get("title"):
-        console.print(f"  [{lore.ANCIENT_DIM}]title:[/{lore.ANCIENT_DIM}] {res.metadata['title']}")
+        console.print(f"  [{lore.DIM}]title:[/{lore.DIM}] {res.metadata['title']}")
 
 
 @app.command()
@@ -266,11 +262,11 @@ def lib_stats():
     """Counts by type, attachment / annotation totals, collections."""
     s = zot.stats()
     table = Table(
-        title=f"[{lore.SHEIKAH_CYAN} bold]{lore.EYE}  {lore.say('lib_overview')}[/{lore.SHEIKAH_CYAN} bold]",
-        border_style=lore.ANCIENT_DIM,
+        title=f"[{lore.ACCENT} bold]{lore.BULLET}  {lore.say('lib_overview')}[/{lore.ACCENT} bold]",
+        border_style=lore.DIM,
     )
-    table.add_column("entry", style=lore.SHEIKAH_CYAN)
-    table.add_column("count", justify="right", style=lore.TRIFORCE_GOLD)
+    table.add_column("entry", style=lore.ACCENT)
+    table.add_column("count", justify="right", style=lore.HIGHLIGHT)
     for t, n in s["by_type"].items():
         table.add_row(t, str(n))
     table.add_row("pdf tomes", str(s["pdf_attachments"]))
@@ -317,7 +313,7 @@ def lib_collections():
 
 @ws_app.command("init")
 def ws_init(name: str, question: str = typer.Option("", "--question", "-q")):
-    """Set up a new stable (workspace) for a research question."""
+    """Set up a new workspace for a research question."""
     p = ws.init(name, question=question)
     console.print(lore.ok(f"{lore.say('ws_created')} → {p}"))
 
@@ -330,7 +326,7 @@ def ws_list():
 
 @ws_app.command("add")
 def ws_add(name: str, seed: str):
-    """Plant a Korok seed (Zotero key / citekey / DOI / arXiv id) in the stable."""
+    """Add a seed paper (Zotero key / citekey / DOI / arXiv id) to the workspace."""
     p = ws.add_seed(name, seed)
     console.print(lore.ok(f"{lore.say('ws_seed_added')} → {p}"))
 
@@ -378,12 +374,12 @@ def ws_parse(
         return
     chosen = (engine or CONFIG.parse_engine).lower()
     console.print(
-        f"[{lore.SHEIKAH_CYAN}]would clear {len(todo)} shrine(s) "
-        f"with engine={chosen}:[/{lore.SHEIKAH_CYAN}]"
+        f"[{lore.ACCENT}]would parse {len(todo)} paper(s) "
+        f"with engine={chosen}:[/{lore.ACCENT}]"
     )
     for key in todo:
         item = zot.get_item(key)
-        console.print(f"  [{lore.TRIFORCE_GOLD}]{lore.TRIANGLE}[/{lore.TRIFORCE_GOLD}] {key}  {item.short() if item else ''}")
+        console.print(f"  [{lore.HIGHLIGHT}]{lore.WARN_MARK}[/{lore.HIGHLIGHT}] {key}  {item.short() if item else ''}")
     if not yes:
         console.print(lore.info("preview only — pass --yes to run"))
         return
@@ -427,66 +423,24 @@ def ws_related(name: str, top: int = typer.Option(40, "--top", "-n")):
     console.print(lore.ok(f"{lore.say('ws_related_done')} — {len(deduped)} signals → {out}"))
 
 
-# ---------- Zelda-flavored aliases ------------------------------------------
-# These delegate to the canonical commands so help text stays single-source.
-
-
-@app.command("sensor", help="(alias of related) Shrine Sensor — find related work via citation graph.")
-def sensor(
-    key: str,
-    out: Path = typer.Option(None, "--out", "-o"),
-    top: int = typer.Option(50, "--top", "-n"),
-):
-    related(key, out=out, top=top)
-
-
-@app.command("memory", help="(alias of notes) Recovered Memory — read or append per-paper notes.")
-def memory(
-    key: str,
-    append: str = typer.Option("", "--append", "-a"),
-    source: str = typer.Option("agent", "--source"),
-    kind: str = typer.Option("analysis", "--kind"),
-):
-    notes(key, append=append, source=source, kind=kind)
-
-
-@app.command("shrine", help="(alias of parse) Clear the shrine — convert a paper's PDF to multimodal Markdown.")
-def shrine(
-    key: str,
-    engine: str = typer.Option(None, "--engine", "-e"),
-    force: bool = typer.Option(False, "--force", "-f"),
-):
-    parse(key, engine=engine, force=force)
-
-
 @app.command()
 def web(
     port: int = typer.Option(8765, "--port", "-p", help="port to bind"),
     host: str = typer.Option("127.0.0.1", "--host", help="host to bind"),
     no_open: bool = typer.Option(False, "--no-open", help="do not auto-open browser"),
 ):
-    """Map mode — open workspaces in a browser with KaTeX + Zotero citation links."""
+    """Open workspaces in a browser, with KaTeX and Zotero citation links."""
     try:
         from . import web as web_mod
     except ImportError as e:
         console.print(f"[red]web reader needs extra deps:[/red] {e}")
         console.print("install with: [cyan]pip install starlette uvicorn markdown-it-py mdit-py-plugins[/cyan]")
         raise typer.Exit(1)
-    if (b := lore.banner()):
-        console.print(f"[cyan]{b}[/cyan]")
-    console.print(f"[green]Sheikah Slate online[/green] → http://{host}:{port}/")
+    console.print(f"[green]zr web running[/green] → http://{host}:{port}/")
     if not no_open:
         console.print("opening browser…")
     web_mod.serve(host=host, port=port, open_browser=not no_open)
 
-
-@app.command("map", help="(alias of web) Sheikah Slate map mode — workspace reader.")
-def map_cmd(
-    port: int = typer.Option(8765, "--port", "-p"),
-    host: str = typer.Option("127.0.0.1", "--host"),
-    no_open: bool = typer.Option(False, "--no-open"),
-):
-    web(port=port, host=host, no_open=no_open)
 
 
 if __name__ == "__main__":
